@@ -4,7 +4,7 @@
   "description": "PostPilot: Automated Multi-Platform Social Media Content Engine for SkinEthix & E-commerce",
   "main": "src/index.js",
   "scripts": {
-    "test": "node tests/dataIngestion.test.js",
+    "test": "node tests/dataIngestion.test.js && node tests/geminiCopyEngine.test.js",
     "generate": "node src/index.js"
   },
   "keywords": [
