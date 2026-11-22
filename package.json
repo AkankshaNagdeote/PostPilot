@@ -1,0 +1,26 @@
+{
+  "name": "postpilot",
+  "version": "0.1.0",
+  "description": "PostPilot: Automated Multi-Platform Social Media Content Engine for SkinEthix & E-commerce",
+  "main": "src/index.js",
+  "scripts": {
+    "test": "node tests/dataIngestion.test.js",
+    "generate": "node src/index.js"
+  },
+  "keywords": [
+    "postpilot",
+    "social-media-automation",
+    "content-engine",
+    "instagram",
+    "pinterest",
+    "youtube-shorts",
+    "twitter",
+    "linkedin",
+    "facebook"
+  ],
+  "author": "SkinEthix / SoloCorp",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
