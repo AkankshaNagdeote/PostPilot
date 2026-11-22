@@ -236,6 +236,38 @@ class DataIngestionAdapter {
       return true;
     }).slice(0, filter.limit || 50);
   }
+
+  /**
+   * Ingest and filter products directly from a JSON file
+   */
+  ingestFromJson(filePath = null, filter = {}) {
+    const targetFile = filePath || this.jsonFilePath;
+    if (!fs.existsSync(targetFile)) {
+      throw new Error(`Data file not found at: ${targetFile}`);
+    }
+    const rawData = fs.readFileSync(targetFile, 'utf8');
+    const parsed = JSON.parse(rawData);
+    const rawList = Array.isArray(parsed) ? parsed : (parsed.products || []);
+    const normalized = rawList.map(item => this.normalizeProduct(item));
+
+    return normalized.filter(item => {
+      if (filter.isFamous !== undefined && item.isFamous !== filter.isFamous) return false;
+      if (filter.category && item.category.toLowerCase() !== filter.category.toLowerCase()) return false;
+      if (filter.skinCondition) {
+        const matches = item.forWho.some(cond => cond.toLowerCase().includes(filter.skinCondition.toLowerCase()));
+        if (!matches) return false;
+      }
+      return true;
+    }).slice(0, filter.limit || 50);
+  }
+
+  /**
+   * Ingest and filter products directly from Postgres
+   */
+  async ingestFromPostgres(filter = {}) {
+    this.dataSourceType = 'POSTGRES';
+    return this.getProductsForCampaign(filter);
+  }
 }
 
 module.exports = { DataIngestionAdapter };

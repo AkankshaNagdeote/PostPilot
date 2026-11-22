@@ -12,9 +12,33 @@
 
 class GeminiCopyEngine {
   constructor(options = {}) {
-    this.apiKey = options.apiKey || process.env.GEMINI_API_KEY || null;
-    this.model = options.model || 'gemini-1.5-pro';
-    this.customLlmClient = options.customLlmClient || null;
+    const opts = options || {};
+    this.apiKey = opts.apiKey || process.env.GEMINI_API_KEY || null;
+    this.model = opts.model || 'gemini-1.5-pro';
+    this.customLlmClient = opts.customLlmClient || null;
+  }
+
+  /**
+   * Normalize product properties supporting both camelCase and snake_case models
+   */
+  _normalizeProduct(product) {
+    if (!product) return {};
+    return {
+      ...product,
+      id: product.id || product.slug || 'prod-001',
+      name: product.name || 'Hero Skincare Formula',
+      brand: product.brand || 'SkinEthix',
+      category: product.category || 'moisturizer',
+      isFamous: product.isFamous !== undefined ? product.isFamous : (product.is_famous || false),
+      forWho: Array.isArray(product.forWho) ? product.forWho : (Array.isArray(product.who_its_for) ? product.who_its_for : ['Normal skin', 'Dry barrier']),
+      notForWho: Array.isArray(product.notForWho) ? product.notForWho : (Array.isArray(product.who_its_not_for) ? product.who_its_not_for : ['Severe cystic acne']),
+      heroIngredients: Array.isArray(product.heroIngredients) ? product.heroIngredients : (Array.isArray(product.hero_ingredients) ? product.hero_ingredients : ['Ceramides', 'Niacinamide']),
+      texture: product.texture || 'Velvet cream',
+      scent: product.scent || '100% Fragrance-Free',
+      priceUsd: product.priceUsd !== undefined ? product.priceUsd : (product.price_usd !== undefined ? product.price_usd : 18.00),
+      rating: product.rating !== undefined ? product.rating : 4.8,
+      canonicalUrl: product.canonicalUrl || product.canonical_url || `https://skinethix.com/products/${product.slug || product.id || 'product'}`
+    };
   }
 
   /**
@@ -32,7 +56,8 @@ Always include canonical links and relevant hashtags.`;
    * 1. Instagram Generator (REQ-2.1.2)
    * Enforces 5-slide narrative arc: Hook -> Problem -> Proof -> Fix -> CTA
    */
-  generateInstagramCarousel(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateInstagramCarousel(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     const hook = campaignType === 'PRODUCT_LAUNCH'
       ? `🚨 STOP using ${product.name} if your skin does THIS...`
       : `Why ${product.brand}'s best-seller might be damaging your skin barrier...`;
@@ -80,6 +105,8 @@ Always include canonical links and relevant hashtags.`;
       `🔍 Want to see if your current routine contains hidden red flags? Run your products through our free scanner at SkinEthix.com (link in bio)!\n\n` +
       `#skincarecommunity #barrierrepair #skincareroutine #ingredientanalysis #${product.brand.toLowerCase().replace(/[^a-z0-9]/g, '')} #skinethix`;
 
+    const hashtags = ['#skincarecommunity', '#barrierrepair', '#skincareroutine', '#ingredientanalysis', `#${product.brand.toLowerCase().replace(/[^a-z0-9]/g, '')}`, '#skinethix'];
+
     return {
       platform: 'INSTAGRAM',
       format: 'CAROUSEL_4_5',
@@ -87,6 +114,7 @@ Always include canonical links and relevant hashtags.`;
       slideCount: slides.length,
       slides,
       caption,
+      hashtags,
       ctaUrl: product.canonicalUrl
     };
   }
@@ -95,7 +123,8 @@ Always include canonical links and relevant hashtags.`;
    * 2. Twitter / X Thread Generator (REQ-2.1.5)
    * Enforces 4-to-6 tweets, each strictly <= 280 characters
    */
-  generateTwitterThread(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateTwitterThread(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     const tweets = [];
 
     // Tweet 1: Contrarian Hook
@@ -157,27 +186,36 @@ Always include canonical links and relevant hashtags.`;
    * 3. YouTube Shorts / TikTok Generator (REQ-2.1.3)
    * Enforces 30s timed video script with [VISUAL CUE] markers
    */
-  generateYouTubeShortsScript(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateYouTubeShortsScript(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     const script = [
       {
         timestamp: '00:00 - 00:05',
         spokenText: `If you have persistent bumps or random redness, put down your ${product.name} right now.`,
-        visualCue: `[VISUAL CUE: Creator holds product to camera with red ❌ stamp on screen]`
+        voiceover: `If you have persistent bumps or random redness, put down your ${product.name} right now.`,
+        visualCue: `[VISUAL CUE: Creator holds product to camera with red ❌ stamp on screen]`,
+        cue: `[VISUAL CUE: Creator holds product to camera with red ❌ stamp on screen]`
       },
       {
         timestamp: '00:05 - 00:12',
         spokenText: `Dermatologists love this, but if your skin is prone to ${product.notForWho[0] || 'fungal acne'}, this formula can feed the irritation.`,
-        visualCue: `[VISUAL CUE: Close-up on ingredient list highlighting active emulsifiers]`
+        voiceover: `Dermatologists love this, but if your skin is prone to ${product.notForWho[0] || 'fungal acne'}, this formula can feed the irritation.`,
+        visualCue: `[VISUAL CUE: Close-up on ingredient list highlighting active emulsifiers]`,
+        cue: `[VISUAL CUE: Close-up on ingredient list highlighting active emulsifiers]`
       },
       {
         timestamp: '00:12 - 00:20',
         spokenText: `However! If you actually have ${product.forWho[0] || 'dry skin'}, the ${product.heroIngredients[0] || 'barrier actives'} will heal you in 48 hours.`,
-        visualCue: `[VISUAL CUE: Macro texture swatch showing ${product.texture}]`
+        voiceover: `However! If you actually have ${product.forWho[0] || 'dry skin'}, the ${product.heroIngredients[0] || 'barrier actives'} will heal you in 48 hours.`,
+        visualCue: `[VISUAL CUE: Macro texture swatch showing ${product.texture}]`,
+        cue: `[VISUAL CUE: Macro texture swatch showing ${product.texture}]`
       },
       {
         timestamp: '00:20 - 00:30',
         spokenText: `Stop guessing with your skin. We audited 5,000 products on SkinEthix. Click the link in my bio to check your entire routine for free.`,
-        visualCue: `[VISUAL CUE: Screen recording of skinethix.com routine analyzer in action]`
+        voiceover: `Stop guessing with your skin. We audited 5,000 products on SkinEthix. Click the link in my bio to check your entire routine for free.`,
+        visualCue: `[VISUAL CUE: Screen recording of skinethix.com routine analyzer in action]`,
+        cue: `[VISUAL CUE: Screen recording of skinethix.com routine analyzer in action]`
       }
     ];
 
@@ -185,7 +223,9 @@ Always include canonical links and relevant hashtags.`;
       platform: 'YOUTUBE_SHORTS',
       format: 'VIDEO_SCRIPT_9_16',
       dimensions: { width: 1080, height: 1920, ratio: '9:16' },
+      title: `Don't Buy ${product.name} Before Watching This!`,
       estimatedDurationSeconds: 30,
+      duration_seconds: 30,
       script,
       ctaUrl: product.canonicalUrl
     };
@@ -194,7 +234,8 @@ Always include canonical links and relevant hashtags.`;
   /**
    * 4. LinkedIn Thought Leadership & Document Carousel Generator (REQ-2.1.4)
    */
-  generateLinkedInPost(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateLinkedInPost(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     const postBody = `The $100 Billion cosmetics industry has a dirty secret: "For All Skin Types" is a marketing myth.\n\n` +
       `When we audited ${product.name} by ${product.brand} across clinical databases, the chemistry revealed a stark contrast:\n\n` +
       `🔬 Key Findings:\n` +
@@ -217,6 +258,7 @@ Always include canonical links and relevant hashtags.`;
       format: 'PDF_CAROUSEL_AND_ARTICLE',
       dimensions: { width: 1080, height: 1350, ratio: '4:5' },
       postBody,
+      article: postBody,
       pdfSlides,
       ctaUrl: product.canonicalUrl
     };
@@ -225,13 +267,19 @@ Always include canonical links and relevant hashtags.`;
   /**
    * 5. Pinterest 2:3 Vertical Search Pin Generator (REQ-2.1.6)
    */
-  generatePinterestPin(product, campaignType = 'PRODUCT_LAUNCH') {
+  generatePinterestPin(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
+    const title = `${product.name} Ingredient Breakdown: Is It Safe For You?`;
+    const description = `Full scientific audit of ${product.name} by ${product.brand}. Key actives: ${product.heroIngredients.join(', ')}. Find out if it triggers breakouts, texture feel (${product.texture}), and best skin type matches on SkinEthix.`;
+
     return {
       platform: 'PINTEREST',
       format: 'VERTICAL_SEARCH_PIN_2_3',
       dimensions: { width: 1000, height: 1500, ratio: '2:3' },
-      pinTitle: `${product.name} Ingredient Breakdown: Is It Safe For You?`,
-      pinDescription: `Full scientific audit of ${product.name} by ${product.brand}. Key actives: ${product.heroIngredients.join(', ')}. Find out if it triggers breakouts, texture feel (${product.texture}), and best skin type matches on SkinEthix.`,
+      pinTitle: title,
+      title,
+      pinDescription: description,
+      description,
       keywords: ['skincare routine', 'ingredient checker', product.brand.toLowerCase(), 'barrier repair', 'fungal acne safe'],
       destinationUrl: product.canonicalUrl
     };
@@ -240,7 +288,8 @@ Always include canonical links and relevant hashtags.`;
   /**
    * 6. Facebook Community Discussion Generator (REQ-2.1.6)
    */
-  generateFacebookPost(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateFacebookPost(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     const postText = `Has anyone else tried ${product.name} by ${product.brand}? 🤔\n\n` +
       `We see so many mixed reviews on this! Here's what our clinical database at SkinEthix found:\n\n` +
       `✅ AMAZING FOR: ${product.forWho.join(', ')}\n` +
@@ -254,6 +303,7 @@ Always include canonical links and relevant hashtags.`;
       format: 'COMMUNITY_DISCUSSION_1_1',
       dimensions: { width: 1080, height: 1080, ratio: '1:1' },
       postText,
+      post: postText,
       ctaUrl: product.canonicalUrl
     };
   }
@@ -261,7 +311,8 @@ Always include canonical links and relevant hashtags.`;
   /**
    * 7. Reddit & Threads Conversational Generator (REQ-2.1.6)
    */
-  generateRedditThreadsPost(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateRedditThreadsPost(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     const markdown = `**Honest Ingredient Breakdown: ${product.name}**\n\n` +
       `Seeing a lot of debate on whether this is worth the $${product.priceUsd}. Here's the objective formulation data:\n\n` +
       `* **Hero Ingredients:** ${product.heroIngredients.join(', ')}\n` +
@@ -274,6 +325,7 @@ Always include canonical links and relevant hashtags.`;
       platform: 'REDDIT_THREADS',
       format: 'TEXT_FIRST_BREAKDOWN',
       markdown,
+      post: markdown,
       ctaUrl: product.canonicalUrl
     };
   }
@@ -281,7 +333,8 @@ Always include canonical links and relevant hashtags.`;
   /**
    * Master Batch Generator: Generates all 7 channel assets for a product
    */
-  generateAllPlatformAssets(product, campaignType = 'PRODUCT_LAUNCH') {
+  generateAllPlatformAssets(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    const product = this._normalizeProduct(rawProduct);
     return {
       productId: product.id,
       productName: product.name,
@@ -298,6 +351,13 @@ Always include canonical links and relevant hashtags.`;
         reddit_threads: this.generateRedditThreadsPost(product, campaignType)
       }
     };
+  }
+
+  /**
+   * Alias for generateAllPlatformAssets
+   */
+  generateOmnichannelBatch(rawProduct, campaignType = 'PRODUCT_LAUNCH') {
+    return this.generateAllPlatformAssets(rawProduct, campaignType);
   }
 }
 
