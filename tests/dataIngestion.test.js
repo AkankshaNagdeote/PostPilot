@@ -1,6 +1,6 @@
 /**
  * PostPilot — Automated Unit Test Suite for STORY-01.1: Data Ingestion Adapter
- * Verifies EARS Requirements: REQ-1.1.1, REQ-1.1.2, REQ-1.1.3
+ * Verifies EARS Requirements: REQ-1.1.1, REQ-1.1.2, REQ-1.1.3, REQ-1.1.4 (URL Ingestion)
  */
 
 const assert = require('assert');
@@ -30,7 +30,7 @@ async function runTests() {
     failed++;
   }
 
-  // TEST 2: REQ-1.1.1 — Postgres Query Compatibility Mock
+  // TEST 2: REQ-1.1.1b — Postgres Query Compatibility Mock
   try {
     const mockPgClient = {
       query: async (sql) => {
@@ -107,6 +107,61 @@ async function runTests() {
     passed++;
   } catch (err) {
     console.error('  ✖ TEST-1.1.3 FAILED:', err.message);
+    failed++;
+  }
+
+  // TEST 5: REQ-1.1.4 — URL Ingestion with JSON-LD Schema & OpenGraph Parsing
+  try {
+    const mockHtml = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <title>Cicaplast B5 Barrier Balm | SkinEthix</title>
+        <meta property="og:title" content="Cicaplast B5 Barrier Balm" />
+        <meta property="og:description" content="Intense panthenol soothing balm for broken skin." />
+        <meta property="og:site_name" content="La Roche-Posay" />
+        <meta property="og:url" content="https://skinethix.com/product/cicaplast-b5" />
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org/",
+          "@type": "Product",
+          "name": "Cicaplast B5 Barrier Balm",
+          "brand": { "@type": "Brand", "name": "La Roche-Posay" },
+          "description": "Deep repair panthenol balm.",
+          "category": "balm",
+          "offers": { "price": "18.99" }
+        }
+        </script>
+      </head>
+      <body><h1>Cicaplast B5</h1></body>
+      </html>
+    `;
+
+    const mockFetcher = async (url) => {
+      return {
+        ok: true,
+        status: 200,
+        text: async () => mockHtml
+      };
+    };
+
+    const urlAdapter = new DataIngestionAdapter({
+      dataSourceType: 'URL',
+      customFetcher: mockFetcher
+    });
+
+    const parsedProduct = await urlAdapter.ingestFromUrl('https://skinethix.com/product/cicaplast-b5');
+    assert.strictEqual(parsedProduct.name, 'Cicaplast B5 Barrier Balm');
+    assert.strictEqual(parsedProduct.brand, 'La Roche-Posay');
+    assert.strictEqual(parsedProduct.category, 'balm');
+    assert.strictEqual(parsedProduct.priceUsd, 18.99);
+    assert.strictEqual(parsedProduct.canonicalUrl, 'https://skinethix.com/product/cicaplast-b5');
+    assert.strictEqual(parsedProduct.texture, 'Lightweight universal emulsion'); // Graceful fallback
+    assert.strictEqual(parsedProduct.sourceType, 'URL');
+    console.log('  ✔ TEST-1.1.4 (URL Content Ingestion & JSON-LD/OpenGraph Parsing): PASSED');
+    passed++;
+  } catch (err) {
+    console.error('  ✖ TEST-1.1.4 FAILED:', err.message);
     failed++;
   }
 
